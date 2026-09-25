@@ -37,7 +37,7 @@
 <body>
 
 <header>
-    <h1>Admin — Kelola Data Kecamatan (CRUD)</h1>
+    <h1>Admin: Kelola Data Kecamatan (CRUD)</h1>
     <a href="index.php">&larr; Kembali ke Peta</a>
 </header>
 
