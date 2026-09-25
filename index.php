@@ -124,7 +124,7 @@ $tabel = $conn->query("SELECT * FROM kecamatan ORDER BY nama");
 
     <!-- SPK: Ranking Prioritas Pembangunan (Metode SAW) -->
     <div class="panel">
-        <h2>SPK — Ranking Prioritas Pembangunan (Metode SAW)</h2>
+        <h2>SPK: Ranking Prioritas Pembangunan (Metode SAW)</h2>
         <p style="font-size:13px; color:#777; margin-top:-6px;">
             Sistem Pendukung Keputusan sederhana untuk merangking kecamatan mana yang paling perlu
             diprioritaskan pembangunannya, berdasarkan bobot kriteria yang bisa kamu atur sendiri.
