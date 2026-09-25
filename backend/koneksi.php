@@ -1,5 +1,5 @@
 <?php
-// Sesuaikan dengan pengaturan MySQL Anda (default XAMPP: root tanpa password)
+// Sesuaikan dengan pengaturan MySQL (default XAMPP: root tanpa password)
 $host = 'localhost';
 $user = 'root';
 $pass = 'root123';

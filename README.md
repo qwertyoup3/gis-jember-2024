@@ -1,7 +1,7 @@
 # Visualisasi Penduduk Kabupaten Jember 2024 (PHP + MySQL + Leaflet)
 
 ## Isi folder
-- `database.sql` — membuat database `db_jember`, tabel `kecamatan`, dan 31 data kecamatan
+- `database.sql` — membuat database `jember-penduduk`, tabel `kecamatan`, dan 31 data kecamatan
 - `koneksi.php` — pengaturan koneksi MySQL
 - `api.php` — endpoint JSON yang dibaca peta dan grafik
 - `jember_kecamatan.geojson` — batas wilayah 31 kecamatan Jember (poligon)
