@@ -9,7 +9,8 @@ CREATE TABLE kecamatan (
     jumlah_penduduk  INT           NOT NULL,           -- jiwa, tahun 2024
     laju_pertumbuhan DECIMAL(5,2)  NOT NULL,           -- % per tahun, 2020-2024
     latitude         DECIMAL(10,6) NOT NULL,           -- titik di dalam wilayah kecamatan (dari batas GeoJSON)
-    longitude        DECIMAL(10,6) NOT NULL
+    longitude        DECIMAL(10,6) NOT NULL,
+    UNIQUE KEY uq_nama (nama)
 ) ENGINE=InnoDB;
 
 INSERT INTO kecamatan (nama, jumlah_penduduk, laju_pertumbuhan, latitude, longitude) VALUES

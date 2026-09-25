@@ -2,8 +2,8 @@
 // Sesuaikan dengan pengaturan MySQL Anda (default XAMPP: root tanpa password)
 $host = 'localhost';
 $user = 'root';
-$pass = '';
-$db   = 'db_jember';
+$pass = 'root123';
+$db   = 'jember-penduduk';
 
 $conn = new mysqli($host, $user, $pass, $db);
 if ($conn->connect_error) {

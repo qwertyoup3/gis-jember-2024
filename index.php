@@ -1,5 +1,5 @@
 <?php
-require 'koneksi.php';
+require 'backend/koneksi.php';
 
 // Ringkasan untuk kartu statistik
 $ringkas = $conn->query("SELECT COUNT(*) AS jml_kec, SUM(jumlah_penduduk) AS total,
@@ -63,9 +63,12 @@ $tabel = $conn->query("SELECT * FROM kecamatan ORDER BY nama");
 </head>
 <body>
 
-<header>
-    <h1>Visualisasi Penduduk Kabupaten Jember 2024</h1>
-    <p>Jumlah penduduk dan laju pertumbuhan per kecamatan (2020–2024) — Sumber: BPS Kabupaten Jember</p>
+<header style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h1>Visualisasi Penduduk Kabupaten Jember 2024</h1>
+        <p>Jumlah penduduk dan laju pertumbuhan per kecamatan (2020–2024) <br> Sumber: BPS Kabupaten Jember</p>
+    </div>
+    <a href="admin.php" style="color:#fff; border:1px solid #fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:13px; white-space:nowrap;">Kelola Data &rarr;</a>
 </header>
 
 <div class="container">
@@ -100,6 +103,9 @@ $tabel = $conn->query("SELECT * FROM kecamatan ORDER BY nama");
         <div class="toolbar">
             <button id="btnJumlah" class="active" onclick="gantiMode('jumlah')">Jumlah Penduduk</button>
             <button id="btnLaju" onclick="gantiMode('laju')">Laju Pertumbuhan</button>
+            <input type="text" id="kotakCariPeta" placeholder="Cari kecamatan..." list="daftarNamaKec"
+                   style="padding:6px 10px; border:1px solid #ccc; border-radius:6px; font-size:13px; margin-left:8px;">
+            <datalist id="daftarNamaKec"></datalist>
         </div>
         <div id="map"></div>
     </div>
@@ -114,6 +120,40 @@ $tabel = $conn->query("SELECT * FROM kecamatan ORDER BY nama");
             <h2>Laju Pertumbuhan per Tahun (%)</h2>
             <canvas id="chartLaju" height="420"></canvas>
         </div>
+    </div>
+
+    <!-- SPK: Ranking Prioritas Pembangunan (Metode SAW) -->
+    <div class="panel">
+        <h2>SPK — Ranking Prioritas Pembangunan (Metode SAW)</h2>
+        <p style="font-size:13px; color:#777; margin-top:-6px;">
+            Sistem Pendukung Keputusan sederhana untuk merangking kecamatan mana yang paling perlu
+            diprioritaskan pembangunannya, berdasarkan bobot kriteria yang bisa kamu atur sendiri.
+        </p>
+        <div style="display:flex; gap:16px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+            <div>
+                <label style="font-size:12px; color:#666; display:block;">Bobot Jumlah Penduduk (0–1)</label>
+                <input type="number" id="wJumlah" min="0" max="1" step="0.1" value="0.6"
+                       style="padding:6px 8px; border:1px solid #ccc; border-radius:6px; width:100px;">
+            </div>
+            <div>
+                <label style="font-size:12px; color:#666; display:block;">Bobot Laju Pertumbuhan (0–1)</label>
+                <input type="number" id="wLaju" min="0" max="1" step="0.1" value="0.4"
+                       style="padding:6px 8px; border:1px solid #ccc; border-radius:6px; width:100px;">
+            </div>
+            <button onclick="hitungSPK()" style="background:#1e3a5f; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Hitung Ranking</button>
+            <span style="font-size:12px; color:#999;">*Bobot otomatis dinormalisasi agar totalnya 1</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ranking</th><th>Kecamatan</th>
+                    <th style="text-align:right">Skor SAW</th>
+                    <th style="text-align:right">Jumlah Penduduk</th>
+                    <th style="text-align:right">Laju (%)</th>
+                </tr>
+            </thead>
+            <tbody id="tbodySPK"></tbody>
+        </table>
     </div>
 
     <!-- Tabel -->
@@ -235,10 +275,19 @@ function buatLayerBatas(geojson) {
 function buatLayerTitik() {
     layerTitik.clearLayers();
     dataKec.forEach(d => {
-        L.circleMarker([d.lat, d.lng], {
+        const nilai = mode === 'jumlah' ? fmt(d.jumlah) : d.laju.toLocaleString('id-ID') + '%';
+        const lingkaran = L.circleMarker([d.lat, d.lng], {
             radius: Math.sqrt(d.jumlah) / 18,   // luas lingkaran sebanding jumlah penduduk
             fillColor: warna(d), color: '#333', weight: 1, fillOpacity: 0.85
-        }).bindPopup(isiPopup(d)).addTo(layerTitik);
+        })
+        .bindPopup(isiPopup(d))
+        // Tooltip permanen: angka langsung terlihat tanpa perlu klik/hover
+        .bindTooltip(nilai, { permanent: true, direction: 'top', offset: [0, -4], className: 'label-kec' })
+        // Hover juga update panel info di kiri atas, sama seperti poligon
+        .on('mouseover', () => info.update(d))
+        .on('mouseout', () => info.update());
+
+        lingkaran.addTo(layerTitik);
     });
 }
 
@@ -302,10 +351,46 @@ function buatGrafik() {
     });
 }
 
+// ---------- SPK: Ranking Prioritas Pembangunan (Metode SAW) ----------
+async function hitungSPK() {
+    const wJumlah = document.getElementById('wJumlah').value || 0.6;
+    const wLaju = document.getElementById('wLaju').value || 0.4;
+
+    const res = await fetch(`backend/spk.php?w_jumlah=${wJumlah}&w_laju=${wLaju}`);
+    const hasil = await res.json();
+
+    const tbody = document.getElementById('tbodySPK');
+    tbody.innerHTML = '';
+    hasil.data.forEach(d => {
+        tbody.innerHTML += `
+            <tr>
+                <td><b>${d.ranking}</b></td>
+                <td>${d.nama}</td>
+                <td class="num"><b>${d.skor}</b></td>
+                <td class="num">${fmt(d.jumlah_penduduk)}</td>
+                <td class="num">${d.laju_pertumbuhan}</td>
+            </tr>`;
+    });
+}
+
+// ---------- Fitur Find/Cari: cari kecamatan di peta lalu zoom + buka popup ----------
+function cariKecamatan(namaCari) {
+    if (!namaCari) return;
+    const d = dataByNama[namaCari];
+    if (!d) return;
+
+    map.setView([d.lat, d.lng], 13);
+    layerTitik.eachLayer(l => {
+        if (l.getLatLng().lat === d.lat && l.getLatLng().lng === d.lng) {
+            l.openPopup();
+        }
+    });
+}
+
 // ---------- Ambil data MySQL (api.php) + batas wilayah (GeoJSON) ----------
 Promise.all([
-    fetch('api.php').then(r => r.json()),
-    fetch('jember_kecamatan.geojson').then(r => r.json())
+    fetch('backend/api.php').then(r => r.json()),
+    fetch('data/jember_kecamatan.geojson').then(r => r.json())
 ]).then(([data, geojson]) => {
     dataKec = data;
     dataKec.forEach(d => dataByNama[d.nama] = d);
@@ -333,6 +418,18 @@ Promise.all([
     L.control.scale({ imperial: false }).addTo(map);
     buatLegenda();
     buatGrafik();
+
+    // Isi datalist untuk kotak pencarian & pasang event
+    const datalist = document.getElementById('daftarNamaKec');
+    dataKec.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.nama;
+        datalist.appendChild(opt);
+    });
+    document.getElementById('kotakCariPeta').addEventListener('change', (e) => cariKecamatan(e.target.value));
+
+    // Hitung ranking SPK pertama kali dengan bobot default
+    hitungSPK();
 }).catch(err => alert('Gagal memuat data: ' + err));
 </script>
 </body>
